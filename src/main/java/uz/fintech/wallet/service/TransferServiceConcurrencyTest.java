@@ -76,7 +76,6 @@ class TransferServiceConcurrencyTest {
         assertThat(systemBalance).isEqualByComparingTo("-1000");
     }
 
-
     @Test
     void twentyParallelTransfers() throws Exception {
         transferService.transfer(systemWalletId, aliWalletId, new BigDecimal("1000"), "topup-1");
@@ -118,5 +117,15 @@ class TransferServiceConcurrencyTest {
                 .map(LedgerEntry::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         assertThat(ledgerTotal).isEqualByComparingTo("0");
+
+        assertBalanceMatchesLedger(systemWalletId);
+        assertBalanceMatchesLedger(aliWalletId);
+        assertBalanceMatchesLedger(valiWalletId);
+    }
+
+    private void assertBalanceMatchesLedger(Long walletId){
+        BigDecimal balance = walletRepository.findById(walletId).orElseThrow().getBalance();
+        BigDecimal ledgerSum = ledgerEntryRepository.sumByWalletId(walletId);
+        assertThat(balance).isEqualByComparingTo(ledgerSum);
     }
 }
