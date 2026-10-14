@@ -20,10 +20,7 @@ import uz.fintech.wallet.repository.WalletRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -122,6 +119,39 @@ class TransferServiceConcurrencyTest {
         assertBalanceMatchesLedger(aliWalletId);
         assertBalanceMatchesLedger(valiWalletId);
     }
+
+    @Test
+    void sameKeyInParallelOnlyOneTransfer() throws Exception {
+        transferService.transfer(systemWalletId, aliWalletId, new BigDecimal("1000"), "topup-1");
+        int threadCount = 5;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch startSignal = new CountDownLatch(1);
+        List<Future<TransactionEntity>> futures = new ArrayList<>();
+
+        for (int i = 0; i < threadCount; i++) {
+            futures.add(executor.submit(() -> {
+                startSignal.await();
+                return transferService.transfer(aliWalletId, valiWalletId, new BigDecimal("100"), "same-key");
+            }));
+        }
+        startSignal.countDown();
+
+        int errors = 0;
+        for (Future<TransactionEntity> future : futures) {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                errors++;
+            }
+        }
+        executor.shutdown();
+
+        BigDecimal aliBalance = walletRepository.findById(aliWalletId).orElseThrow().getBalance();
+        assertThat(errors).isEqualTo(0);
+        assertThat(aliBalance).isEqualByComparingTo("900");
+        assertThat(transactionRepository.count()).isEqualTo(2);
+    }
+
 
     private void assertBalanceMatchesLedger(Long walletId){
         BigDecimal balance = walletRepository.findById(walletId).orElseThrow().getBalance();

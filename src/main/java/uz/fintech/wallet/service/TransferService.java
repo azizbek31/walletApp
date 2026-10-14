@@ -48,6 +48,11 @@ public class TransferService {
         Wallet fromWallet = fromWalletId.equals(first.getId()) ? first : second;
         Wallet toWallet = toWalletId.equals(first.getId()) ? first : second;
 
+        Optional<TransactionEntity> existingAfterLock = transactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingAfterLock.isPresent()) {
+            return existingAfterLock.get();
+        }
+
         if (!(fromWallet.getStatus() == WalletStatus.ACTIVE && toWallet.getStatus() == WalletStatus.ACTIVE)) {
             return saveFailed(amount, "WALLET_BLOCKED", idempotencyKey, fromWallet, toWallet);
         }
