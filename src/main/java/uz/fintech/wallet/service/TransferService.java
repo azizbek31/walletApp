@@ -10,6 +10,7 @@ import uz.fintech.wallet.entity.Wallet;
 import uz.fintech.wallet.enums.TransactionStatus;
 import uz.fintech.wallet.enums.WalletStatus;
 import uz.fintech.wallet.enums.WalletType;
+import uz.fintech.wallet.exception.WalletNotFoundException;
 import uz.fintech.wallet.repository.LedgerEntryRepository;
 import uz.fintech.wallet.repository.TransactionRepository;
 import uz.fintech.wallet.repository.WalletRepository;
@@ -41,9 +42,9 @@ public class TransferService {
         Long firstId = Math.min(fromWalletId, toWalletId);
         Long secondId = Math.max(fromWalletId, toWalletId);
         Wallet first = walletRepository.findByIdForUpdate(firstId)
-                .orElseThrow(() -> new RuntimeException("Wallet not found: " + firstId));
+                .orElseThrow(() -> new WalletNotFoundException(firstId));
         Wallet second = walletRepository.findByIdForUpdate(secondId)
-                .orElseThrow(() -> new RuntimeException("Wallet not found: " + secondId));
+                .orElseThrow(() -> new WalletNotFoundException(secondId));
 
         Wallet fromWallet = fromWalletId.equals(first.getId()) ? first : second;
         Wallet toWallet = toWalletId.equals(first.getId()) ? first : second;
